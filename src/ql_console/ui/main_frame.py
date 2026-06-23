@@ -42,11 +42,14 @@ STATUS_COLORS: dict[str, RGB] = {
     "error": ERROR_COLOR,
 }
 
-# Leading indicator glyph for each status (symbol-only, no trailing decoration).
+# Leading indicator glyph per status. Use only characters present in common
+# monospace fonts (•, ×): geometric circles like ● ○ are absent from Consolas
+# and get font-substituted, which inflates the line height. State is conveyed by
+# color instead of glyph shape.
 STATUS_GLYPHS: dict[str, str] = {
     "connecting": "•",
-    "connected": "●",
-    "disconnected": "○",
+    "connected": "•",
+    "disconnected": "•",
     "error": "×",
 }
 
@@ -119,6 +122,7 @@ class MainFrame(wx.Frame):
         # State keyed by the id() of each ServerConfig object.
         self._state: dict[int, _ServerState] = {}
         self._history_pos: int = 0
+        self._console_font: wx.Font | None = None
 
         self._build_menu()
         self._build_ui()
@@ -183,10 +187,10 @@ class MainFrame(wx.Frame):
 
     def _apply_view_settings(self) -> None:
         """Apply font/background settings to the console and events views."""
-        font = self._make_console_font()
+        self._console_font = self._make_console_font()
         bg = wx.Colour(*colors.parse_hex(self.config.settings.console_bg))
         for ctrl in (self.console_ctrl, self.events_ctrl, self.command_input):
-            ctrl.SetFont(font)
+            ctrl.SetFont(self._console_font)
             ctrl.SetBackgroundColour(bg)
         # Re-render the current server so existing lines pick up the new look.
         self._on_select_server()
@@ -228,8 +232,11 @@ class MainFrame(wx.Frame):
         # Right: notebook with console + events.
         notebook = wx.Notebook(panel)
         self.notebook = notebook
-        mono = wx.Font(wx.FontInfo(11).Family(wx.FONTFAMILY_TELETYPE))
-        bg = wx.Colour(*CONSOLE_BG)
+        # Use the configured console font from the start so the first lines
+        # render at the right size (no transient default-font flash).
+        self._console_font = self._make_console_font()
+        mono = self._console_font
+        bg = wx.Colour(*colors.parse_hex(self.config.settings.console_bg))
         fg = wx.Colour(*colors.WHITE)
 
         console_page = wx.Panel(notebook)
@@ -639,7 +646,12 @@ class MainFrame(wx.Frame):
 
     def _render_line(self, ctrl: wx.TextCtrl, runs: Line) -> None:
         for rgb, text in runs:
-            ctrl.SetDefaultStyle(wx.TextAttr(wx.Colour(*rgb)))
+            attr = wx.TextAttr(wx.Colour(*rgb))
+            # Pin the font per-segment so the very first lines render at the
+            # configured size (the control's font may not be applied yet).
+            if self._console_font is not None:
+                attr.SetFont(self._console_font)
+            ctrl.SetDefaultStyle(attr)
             ctrl.AppendText(text)
         ctrl.AppendText("\n")
 
