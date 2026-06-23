@@ -3,7 +3,7 @@ name = "ql-console"
 version = "0.1.0"
 description = "Quake Live RCON admin console (wxPython + ZeroMQ)"
 readme = "README.md"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.12"
 dependencies = [
     "wxpython>=4.2.5",
     "pyzmq>=26",

@@ -10,7 +10,7 @@ GUI built with **wxPython**, talking to the server over **ZeroMQ** (`pyzmq`).
 
 ## Requirements
 
-- Python **3.12** (wxPython 4.2.5 has no prebuilt wheels for 3.13/3.14)
+- Python **3.14** (3.12+ supported)
 - [uv](https://docs.astral.sh/uv/) for package management
 
 ## Running
