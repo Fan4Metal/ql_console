@@ -28,6 +28,13 @@ STATUS_CONNECTED = "connected"
 STATUS_DISCONNECTED = "disconnected"
 STATUS_ERROR = "error"
 
+# Error detail codes sent with STATUS_ERROR (mapped to localized text by the UI).
+ERR_AUTH_FAILED = "auth_failed"
+ERR_MAX_ATTEMPTS = "max_attempts"
+
+# Stop trying after this many failed (never-authenticated) connection attempts.
+MAX_ATTEMPTS = 3
+
 _POLL_TIMEOUT_MS = 100
 
 
@@ -53,6 +60,8 @@ class RconClient:
         # Com_Printf call); a line isn't complete until a "\n" arrives. We
         # accumulate frames here and split on newlines.
         self._rx_buffer = ""
+        # Set once we receive any data (proves auth succeeded).
+        self._authenticated = False
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
@@ -92,6 +101,9 @@ class RconClient:
 
         monitor = socket.get_monitor_socket()
         registered = False
+        self._authenticated = False
+        fail_count = 0
+        auth_fail_event = getattr(zmq, "EVENT_HANDSHAKE_FAILED_AUTH", None)
         try:
             socket.connect(self._endpoint)
             while not self._stop.is_set():
@@ -99,13 +111,27 @@ class RconClient:
                 # when to (re-)send the mandatory `register` frame.
                 try:
                     ev = recv_monitor_message(monitor, zmq.NOBLOCK)
-                    if ev["event"] == zmq.EVENT_CONNECTED:
+                    event = ev["event"]
+                    if event == zmq.EVENT_CONNECTED:
                         socket.send(b"register")
                         registered = True
                         self._on_status(STATUS_CONNECTED, self._endpoint)
-                    elif ev["event"] == zmq.EVENT_DISCONNECTED:
+                    elif auth_fail_event is not None and event == auth_fail_event:
+                        # Server rejected our PLAIN credentials — wrong password.
+                        self._on_status(STATUS_ERROR, ERR_AUTH_FAILED)
+                        break
+                    elif event == zmq.EVENT_DISCONNECTED:
+                        was_authenticated = self._authenticated
+                        self._authenticated = False
                         registered = False
                         self._on_status(STATUS_DISCONNECTED, self._endpoint)
+                        # A connect/disconnect loop without ever authenticating
+                        # means bad password/port — give up after MAX_ATTEMPTS.
+                        if not was_authenticated:
+                            fail_count += 1
+                            if fail_count >= MAX_ATTEMPTS:
+                                self._on_status(STATUS_ERROR, ERR_MAX_ATTEMPTS)
+                                break
                 except zmq.error.Again:
                     pass
 
@@ -140,6 +166,7 @@ class RconClient:
                 msg = socket.recv(zmq.NOBLOCK)
             except zmq.error.Again:
                 break
+            self._authenticated = True  # receiving data proves auth succeeded
             self._rx_buffer += msg.decode(errors="replace")
             # Emit each complete (newline-terminated) line; keep the remainder.
             while "\n" in self._rx_buffer:

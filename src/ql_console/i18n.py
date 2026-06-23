@@ -42,6 +42,14 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
     "state_connected": {"en": "connected", "ru": "подключено"},
     "state_disconnected": {"en": "disconnected", "ru": "отключено"},
     "state_error": {"en": "error", "ru": "ошибка"},
+    "err_auth_failed": {
+        "en": "authentication failed — check the RCON password",
+        "ru": "ошибка аутентификации — проверьте RCON-пароль",
+    },
+    "err_max_attempts": {
+        "en": "could not connect after {n} attempts — check the password/port",
+        "ru": "не удалось подключиться за {n} попыток — проверьте пароль/порт",
+    },
     # Message boxes
     "msg_disconnect_before_edit": {
         "en": "Disconnect before editing this server.",

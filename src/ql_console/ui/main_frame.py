@@ -17,6 +17,7 @@ from ..colors import RGB
 from ..config import AppConfig, ServerConfig, load_config, save_config
 from ..i18n import set_language, t
 from ..connection import ServerConnection
+from ..rcon_client import ERR_AUTH_FAILED, ERR_MAX_ATTEMPTS, MAX_ATTEMPTS
 from ..roster import Player, Roster, parse_players_line
 from .appicon import load_app_icon
 from .autocomplete import AutoComplete
@@ -616,7 +617,11 @@ class MainFrame(wx.Frame):
         else:
             state.stats_status = status
         if status == "error":
-            self._status_line(server, "error", f"{channel} {self._state_label('error')}: {detail}")
+            self._status_line(server, "error", self._error_message(channel, detail))
+            if channel == "rcon" and detail in (ERR_AUTH_FAILED, ERR_MAX_ATTEMPTS):
+                # Terminal RCON failure: tear down so the user can retry Connect.
+                self._teardown_connection(server)
+                return
         else:
             self._status_line(server, status, f"{channel}: {self._state_label(status)}")
         self._refresh_server_list()
@@ -672,6 +677,28 @@ class MainFrame(wx.Frame):
         key = f"state_{status}"
         label = t(key)
         return status if label == key else label
+
+    def _teardown_connection(self, server: ServerConfig) -> None:
+        """Fully stop a server's connection (used after a terminal error)."""
+        state = self._state_for(server)
+        if state.connection:
+            state.connection.disconnect()
+            state.connection = None
+        state.rcon_status = "disconnected"
+        state.stats_status = "disconnected"
+        state.seeding_roster = False
+        self._refresh_server_list()
+        if server is self._selected_server():
+            self._update_buttons()
+            self._update_status_bar(server)
+
+    def _error_message(self, channel: str, detail: str) -> str:
+        """Localized text for a connection error (known codes) or a generic form."""
+        if detail == ERR_AUTH_FAILED:
+            return t("err_auth_failed")
+        if detail == ERR_MAX_ATTEMPTS:
+            return t("err_max_attempts", n=MAX_ATTEMPTS)
+        return f"{channel} {self._state_label('error')}: {detail}"
 
     def _update_status_bar(self, server: ServerConfig) -> None:
         state = self._state_for(server)
