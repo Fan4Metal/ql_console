@@ -12,7 +12,7 @@ import re
 
 import wx
 
-from .. import colors
+from .. import __version__, colors
 from ..colors import RGB
 from ..config import AppConfig, ServerConfig, load_config, save_config
 from ..i18n import set_language, t
@@ -118,7 +118,7 @@ class MainFrame(wx.Frame):
         self.SetIcon(load_app_icon())
         self.config: AppConfig = load_config()
         set_language(self.config.settings.language)
-        self.SetTitle(t("app_title"))
+        self.SetTitle(self._window_title())
         # State keyed by the id() of each ServerConfig object.
         self._state: dict[int, _ServerState] = {}
         self._history_pos: int = 0
@@ -157,9 +157,12 @@ class MainFrame(wx.Frame):
                 self._retranslate()
         dialog.Destroy()
 
+    def _window_title(self) -> str:
+        return f"{t('app_title')} v{__version__}"
+
     def _retranslate(self) -> None:
         """Update all static UI labels to the current language (no restart)."""
-        self.SetTitle(t("app_title"))
+        self.SetTitle(self._window_title())
         self._menubar.SetMenuLabel(0, t("menu_settings"))
         self._mi_settings.SetItemLabel(t("menu_open_settings"))
         self.btn_add.SetLabel(t("btn_add"))
