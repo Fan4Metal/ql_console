@@ -1,0 +1,16 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Raw server dumps may contain secrets (rcon/stats passwords) — never commit
+cvars.txt
+cmds.txt
+*.cvarlist
+*.cmdlist
