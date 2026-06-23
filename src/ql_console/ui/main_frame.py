@@ -616,9 +616,9 @@ class MainFrame(wx.Frame):
         else:
             state.stats_status = status
         if status == "error":
-            self._status_line(server, "error", f"{channel} error: {detail}")
+            self._status_line(server, "error", f"{channel} {self._state_label('error')}: {detail}")
         else:
-            self._status_line(server, status, f"{channel}: {status}")
+            self._status_line(server, status, f"{channel}: {self._state_label(status)}")
         self._refresh_server_list()
         if server is self._selected_server():
             self._update_status_bar(server)
@@ -667,10 +667,16 @@ class MainFrame(wx.Frame):
     def _set_status(self, text: str, field: int = 0) -> None:
         self.SetStatusText(text, field)
 
+    def _state_label(self, status: str) -> str:
+        """Localized word for a connection state, falling back to the raw value."""
+        key = f"state_{status}"
+        label = t(key)
+        return status if label == key else label
+
     def _update_status_bar(self, server: ServerConfig) -> None:
         state = self._state_for(server)
-        self._set_status(t("status_rcon", status=state.rcon_status), 0)
-        stats = state.stats_status if server.stats_enabled else t("status_off")
+        self._set_status(t("status_rcon", status=self._state_label(state.rcon_status)), 0)
+        stats = self._state_label(state.stats_status) if server.stats_enabled else t("status_off")
         self._set_status(t("status_stats", status=stats), 1)
 
     # -- shutdown ---------------------------------------------------------

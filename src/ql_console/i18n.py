@@ -38,6 +38,10 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
     "status_rcon": {"en": "RCON: {status}", "ru": "RCON: {status}"},
     "status_stats": {"en": "Stats: {status}", "ru": "Stats: {status}"},
     "status_off": {"en": "off", "ru": "выкл"},
+    "state_connecting": {"en": "connecting", "ru": "подключение"},
+    "state_connected": {"en": "connected", "ru": "подключено"},
+    "state_disconnected": {"en": "disconnected", "ru": "отключено"},
+    "state_error": {"en": "error", "ru": "ошибка"},
     # Message boxes
     "msg_disconnect_before_edit": {
         "en": "Disconnect before editing this server.",
