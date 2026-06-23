@@ -8,6 +8,8 @@ multiple servers with quick switching between them.
 
 GUI built with **wxPython**, talking to the server over **ZeroMQ** (`pyzmq`).
 
+![ql-console screenshot](images/screenshot.png)
+
 ## Requirements
 
 - Python **3.14** (3.12+ supported)

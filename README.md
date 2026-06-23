@@ -8,6 +8,8 @@
 
 GUI на **wxPython**, связь с сервером через **ZeroMQ** (`pyzmq`).
 
+![Скриншот ql-console](images/screenshot.png)
+
 ## Требования
 
 - Python **3.14** (поддерживается 3.12+)
