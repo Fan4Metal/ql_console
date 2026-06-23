@@ -93,6 +93,58 @@ _CVARS: list[tuple[str, str]] = [
     ("zmq_stats_enable", "включить ZMQ stats (0/1)"),
     ("zmq_stats_password", "пароль stats"),
     ("zmq_stats_port", "порт stats"),
+    # disable_* — убрать предмет/оружие/боеприпас с карты (0/1)
+    ("disable_weapon_gauntlet", "отключить гантлет"),
+    ("disable_weapon_machinegun", "отключить пулемёт"),
+    ("disable_weapon_shotgun", "отключить дробовик"),
+    ("disable_weapon_grenadelauncher", "отключить гранатомёт"),
+    ("disable_weapon_rocketlauncher", "отключить ракетницу"),
+    ("disable_weapon_lightning", "отключить молнию (LG)"),
+    ("disable_weapon_railgun", "отключить рейлган"),
+    ("disable_weapon_plasmagun", "отключить плазмаган"),
+    ("disable_weapon_bfg", "отключить BFG"),
+    ("disable_weapon_grapplinghook", "отключить крюк"),
+    ("disable_weapon_nailgun", "отключить нейлган"),
+    ("disable_weapon_prox_launcher", "отключить минный гранатомёт"),
+    ("disable_weapon_chaingun", "отключить чейнган"),
+    ("disable_ammo_shells", "отключить патроны дробовика"),
+    ("disable_ammo_bullets", "отключить патроны пулемёта"),
+    ("disable_ammo_grenades", "отключить гранаты"),
+    ("disable_ammo_cells", "отключить ячейки (плазма)"),
+    ("disable_ammo_lightning", "отключить заряды молнии"),
+    ("disable_ammo_rockets", "отключить ракеты"),
+    ("disable_ammo_slugs", "отключить слаги (рейл)"),
+    ("disable_ammo_bfg", "отключить заряды BFG"),
+    ("disable_ammo_nails", "отключить гвозди (нейлган)"),
+    ("disable_ammo_mines", "отключить мины"),
+    ("disable_ammo_belt", "отключить ленту (чейнган)"),
+    ("disable_item_armor_shard", "отключить осколок брони"),
+    ("disable_item_armor_combat", "отключить жёлтую броню"),
+    ("disable_item_armor_body", "отключить красную броню"),
+    ("disable_item_health_small", "отключить +5 HP"),
+    ("disable_item_health", "отключить +25 HP"),
+    ("disable_item_health_large", "отключить +50 HP"),
+    ("disable_item_health_mega", "отключить мегахелс"),
+    ("disable_item_quad", "отключить Quad Damage"),
+    ("disable_item_enviro", "отключить Battle Suit"),
+    ("disable_item_haste", "отключить Haste"),
+    ("disable_item_invis", "отключить Invisibility"),
+    ("disable_item_regen", "отключить Regeneration"),
+    ("disable_item_flight", "отключить Flight"),
+    ("disable_holdable_teleporter", "отключить телепорт (holdable)"),
+    ("disable_holdable_medkit", "отключить аптечку (holdable)"),
+    ("disable_holdable_kamikaze", "отключить камикадзе"),
+    ("disable_holdable_portal", "отключить портал"),
+    ("disable_holdable_invulnerability", "отключить неуязвимость"),
+    ("disable_item_scout", "отключить Scout"),
+    ("disable_item_guard", "отключить Guard"),
+    ("disable_item_doubler", "отключить Doubler"),
+    ("disable_item_ammoregen", "отключить Ammo Regen"),
+    ("disable_item_redcube", "отключить красный куб (Harvester)"),
+    ("disable_item_bluecube", "отключить синий куб (Harvester)"),
+    ("disable_team_CTF_redflag", "отключить красный флаг (CTF)"),
+    ("disable_team_CTF_blueflag", "отключить синий флаг (CTF)"),
+    ("disable_team_CTF_neutralflag", "отключить нейтральный флаг (1FCTF)"),
 ]
 
 # (name, description) — console commands.
@@ -226,8 +278,9 @@ def search(query: str, limit: int = 12, kinds: set[str] | None = None) -> list[E
 
 def value_entries(cvar: str) -> list[Entry]:
     """Known value suggestions for a cvar, or [] if none are defined."""
-    pairs = _CVAR_VALUES.get(cvar.lower())
-    if pairs is None and cvar.lower() in _BOOL_CVARS:
+    name = cvar.lower()
+    pairs = _CVAR_VALUES.get(name)
+    if pairs is None and (name in _BOOL_CVARS or name.startswith("disable_")):
         pairs = _BOOL_VALUES
     if not pairs:
         return []
