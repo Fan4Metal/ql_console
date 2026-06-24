@@ -178,6 +178,16 @@ class MainFrame(wx.Frame):
 
         self.SetMenuBar(self._menubar)
 
+        # Suppress wx's default behavior of writing each menu item's help string
+        # (which is empty here) into the status bar on hover — that would blank
+        # out our RCON/stats status fields. Handling the event without Skip()
+        # leaves the status bar untouched.
+        self.Bind(wx.EVT_MENU_HIGHLIGHT_ALL, self._on_menu_highlight)
+
+    def _on_menu_highlight(self, _event: wx.MenuEvent) -> None:
+        # Intentionally do nothing (and don't Skip) so the status bar is not overwritten.
+        pass
+
     def _on_about(self, _event: wx.Event) -> None:
         dialog = AboutDialog(self)
         dialog.ShowModal()
