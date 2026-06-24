@@ -23,6 +23,7 @@ from ..roster import Player, Roster, parse_players_line
 from .about_dialog import AboutDialog
 from .appicon import load_app_icon
 from .autocomplete import AutoComplete
+from .console_view import ConsoleView
 from .server_dialog import ServerDialog
 from .settings_dialog import SettingsDialog
 
@@ -219,9 +220,10 @@ class MainFrame(wx.Frame):
         """Apply font/background settings to the console and events views."""
         self._console_font = self._make_console_font()
         bg = wx.Colour(*colors.parse_hex(self.config.settings.console_bg))
-        for ctrl in (self.console_ctrl, self.events_ctrl, self.command_input):
-            ctrl.SetFont(self._console_font)
-            ctrl.SetBackgroundColour(bg)
+        self.console_ctrl.configure(self._console_font, bg)
+        self.events_ctrl.configure(self._console_font, bg)
+        self.command_input.SetFont(self._console_font)
+        self.command_input.SetBackgroundColour(bg)
         # Re-render the current server so existing lines pick up the new look.
         self._on_select_server()
 
@@ -276,12 +278,8 @@ class MainFrame(wx.Frame):
 
         console_page = wx.Panel(notebook)
         cp_sizer = wx.BoxSizer(wx.VERTICAL)
-        self.console_ctrl = wx.TextCtrl(
-            console_page, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2
-        )
-        self.console_ctrl.SetFont(mono)
-        self.console_ctrl.SetBackgroundColour(bg)
-        self.console_ctrl.SetForegroundColour(fg)
+        self.console_ctrl = ConsoleView(console_page)
+        self.console_ctrl.configure(mono, bg)
         cp_sizer.Add(self.console_ctrl, 1, wx.EXPAND | wx.BOTTOM, 4)
 
         input_row = wx.BoxSizer(wx.HORIZONTAL)
@@ -305,12 +303,8 @@ class MainFrame(wx.Frame):
 
         self.events_page = wx.Panel(notebook)
         ep_sizer = wx.BoxSizer(wx.VERTICAL)
-        self.events_ctrl = wx.TextCtrl(
-            self.events_page, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2
-        )
-        self.events_ctrl.SetFont(mono)
-        self.events_ctrl.SetBackgroundColour(bg)
-        self.events_ctrl.SetForegroundColour(fg)
+        self.events_ctrl = ConsoleView(self.events_page)
+        self.events_ctrl.configure(mono, bg)
         ep_sizer.Add(self.events_ctrl, 1, wx.EXPAND)
         self.events_page.SetSizer(ep_sizer)
         notebook.AddPage(self.events_page, t("tab_events"))
@@ -523,7 +517,7 @@ class MainFrame(wx.Frame):
         if server is None:
             return
         self._state_for(server).console.clear()
-        self.console_ctrl.Clear()
+        self.console_ctrl.clear()
 
     # -- command history (Up/Down in the input box) -----------------------
 
@@ -557,16 +551,16 @@ class MainFrame(wx.Frame):
         server = self._selected_server()
         if server is None:
             self._update_events_tab(None)
-            self.console_ctrl.SetValue("")
-            self.events_ctrl.SetValue("")
+            self.console_ctrl.clear()
+            self.events_ctrl.clear()
             self._history_pos = 0
             self._update_buttons()
             return
         state = self._state_for(server)
         self._update_events_tab(server)
-        self._render_all(self.console_ctrl, state.console)
+        self.console_ctrl.render_all(state.console)
         if server.stats_enabled:
-            self._render_all(self.events_ctrl, state.events)
+            self.events_ctrl.render_all(state.events)
         self._history_pos = len(state.history)
         self._update_buttons()
         self._update_status_bar(server)
@@ -734,70 +728,13 @@ class MainFrame(wx.Frame):
         self._emit(server, self._state_for(server).events, self.events_ctrl, runs)
 
     def _emit(
-        self, server: ServerConfig, store: list[Line], ctrl: wx.TextCtrl, runs: Line
+        self, server: ServerConfig, store: list[Line], ctrl: ConsoleView, runs: Line
     ) -> None:
         store.append(runs)
         if len(store) > MAX_LINES:
             del store[: len(store) - MAX_LINES]
         if server is self._selected_server():
-            self._append_line(ctrl, runs)
-
-    def _append_line(self, ctrl: wx.TextCtrl, runs: Line) -> None:
-        """Append a live line, keeping a scrolled-up reader (or selection) put.
-
-        ``AppendText`` (used by ``_render_line``) jumps to the end and drops any
-        active selection. On a busy server that makes the console feel locked —
-        you can't keep text selected or read scrolled-up history.
-
-        Common case (at the tail, nothing selected): just append. ``AppendText``
-        follows the tail on its own — same as a plain log view — with no extra
-        scrolling, so there's no flicker and nothing to blank the control.
-
-        Otherwise the user is reading scrolled-up history or has text selected:
-        remember the line at the top of the viewport, append (which force-scrolls
-        to the end), then scroll back to that line and restore the selection.
-        """
-        sel_from, sel_to = ctrl.GetSelection()
-        has_sel = sel_from != sel_to
-        if not has_sel and self._at_tail(ctrl):
-            self._render_line(ctrl, runs)
-            return
-
-        _, anchor = ctrl.HitTestPos(wx.Point(2, 2))  # position at the viewport top
-        self._render_line(ctrl, runs)
-        if has_sel:
-            ctrl.SetSelection(sel_from, sel_to)
-        ctrl.ShowPosition(anchor)
-
-    @staticmethod
-    def _at_tail(ctrl: wx.TextCtrl) -> bool:
-        """True if the last line is currently visible (view at the bottom).
-
-        The scrollbar metrics are unreliable for a rich TextCtrl on MSW
-        (``GetScrollThumb`` reports 0), so probe the character at the bottom of
-        the viewport: it's the end of the text — or empty space below it — only
-        when scrolled to the tail. Also true when the content fits (no scroll).
-        """
-        height = ctrl.GetClientSize().height
-        result, pos = ctrl.HitTestPos(wx.Point(2, height - 2))
-        return result == wx.TE_HT_BELOW or pos >= ctrl.GetLastPosition()
-
-    def _render_line(self, ctrl: wx.TextCtrl, runs: Line) -> None:
-        for rgb, text in runs:
-            attr = wx.TextAttr(wx.Colour(*rgb))
-            # Pin the font per-segment so the very first lines render at the
-            # configured size (the control's font may not be applied yet).
-            if self._console_font is not None:
-                attr.SetFont(self._console_font)
-            ctrl.SetDefaultStyle(attr)
-            ctrl.AppendText(text)
-        ctrl.AppendText("\n")
-
-    def _render_all(self, ctrl: wx.TextCtrl, lines: list[Line]) -> None:
-        ctrl.Clear()
-        for runs in lines:
-            self._render_line(ctrl, runs)
-        ctrl.SetInsertionPointEnd()
+            ctrl.append_line(runs)
 
     def _set_status(self, text: str, field: int = 0) -> None:
         self.SetStatusText(text, field)
