@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import re
+from pathlib import Path
 
 import wx
 
@@ -151,6 +152,20 @@ class MainFrame(wx.Frame):
 
     def _build_menu(self) -> None:
         self._menubar = wx.MenuBar()
+
+        file_menu = wx.Menu()
+        self._mi_save_servers = file_menu.Append(wx.ID_ANY, t("menu_save_servers"))
+        self._mi_load_servers = file_menu.Append(wx.ID_ANY, t("menu_load_servers"))
+        file_menu.AppendSeparator()
+        self._mi_clear_servers = file_menu.Append(wx.ID_ANY, t("menu_clear_servers"))
+        file_menu.AppendSeparator()
+        self._mi_exit = file_menu.Append(wx.ID_EXIT, t("menu_exit"))
+        self.Bind(wx.EVT_MENU, self._on_save_servers, self._mi_save_servers)
+        self.Bind(wx.EVT_MENU, self._on_load_servers, self._mi_load_servers)
+        self.Bind(wx.EVT_MENU, self._on_clear_servers, self._mi_clear_servers)
+        self.Bind(wx.EVT_MENU, self._on_exit, self._mi_exit)
+        self._menubar.Append(file_menu, t("menu_file"))
+
         settings = wx.Menu()
         self._mi_settings = settings.Append(wx.ID_PREFERENCES, t("menu_open_settings"))
         self.Bind(wx.EVT_MENU, self._on_open_settings, self._mi_settings)
@@ -188,9 +203,14 @@ class MainFrame(wx.Frame):
     def _retranslate(self) -> None:
         """Update all static UI labels to the current language (no restart)."""
         self.SetTitle(self._window_title())
-        self._menubar.SetMenuLabel(0, t("menu_settings"))
+        self._menubar.SetMenuLabel(0, t("menu_file"))
+        self._mi_save_servers.SetItemLabel(t("menu_save_servers"))
+        self._mi_load_servers.SetItemLabel(t("menu_load_servers"))
+        self._mi_clear_servers.SetItemLabel(t("menu_clear_servers"))
+        self._mi_exit.SetItemLabel(t("menu_exit"))
+        self._menubar.SetMenuLabel(1, t("menu_settings"))
         self._mi_settings.SetItemLabel(t("menu_open_settings"))
-        self._menubar.SetMenuLabel(1, t("menu_help"))
+        self._menubar.SetMenuLabel(2, t("menu_help"))
         self._mi_about.SetItemLabel(t("menu_about"))
         self.btn_add.SetLabel(t("btn_add"))
         self.btn_edit.SetLabel(t("btn_edit"))
@@ -355,6 +375,85 @@ class MainFrame(wx.Frame):
 
     def _persist(self) -> None:
         save_config(self.config)
+
+    def _disconnect_all(self) -> None:
+        """Tear down every live connection (used before clearing/replacing the list)."""
+        for state in self._state.values():
+            if state.connection:
+                state.connection.disconnect()
+
+    # -- File menu: save / load / clear server list -----------------------
+
+    def _on_save_servers(self, _event: wx.Event) -> None:
+        """Export the server list and app settings to a user-chosen JSON file."""
+        with wx.FileDialog(
+            self,
+            t("dlg_save_servers"),
+            defaultFile="servers.json",
+            wildcard="JSON (*.json)|*.json",
+            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
+        ) as dialog:
+            if dialog.ShowModal() != wx.ID_OK:
+                return
+            path = Path(dialog.GetPath())
+        try:
+            save_config(self.config, path)
+        except OSError as exc:
+            wx.MessageBox(
+                t("msg_save_failed", error=exc), t("title_error"), wx.OK | wx.ICON_ERROR
+            )
+
+    def _on_load_servers(self, _event: wx.Event) -> None:
+        """Replace the current server list with one imported from a JSON file."""
+        with wx.FileDialog(
+            self,
+            t("dlg_load_servers"),
+            wildcard="JSON (*.json)|*.json",
+            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+        ) as dialog:
+            if dialog.ShowModal() != wx.ID_OK:
+                return
+            path = Path(dialog.GetPath())
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            loaded = AppConfig.from_dict(data)
+        except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+            wx.MessageBox(
+                t("msg_load_failed", error=exc), t("title_error"), wx.OK | wx.ICON_ERROR
+            )
+            return
+        self._disconnect_all()
+        self._state.clear()
+        self.config.servers = loaded.servers
+        self._persist()
+        self._refresh_server_list()
+        if self.config.servers:
+            self.server_list.SetSelection(0)
+        self._on_select_server()
+
+    def _on_clear_servers(self, _event: wx.Event) -> None:
+        """Remove every server from the list after confirmation."""
+        if not self.config.servers:
+            return
+        if (
+            wx.MessageBox(
+                t("confirm_clear_servers"),
+                t("title_confirm"),
+                wx.YES_NO | wx.ICON_QUESTION,
+            )
+            != wx.YES
+        ):
+            return
+        self._disconnect_all()
+        self._state.clear()
+        self.config.servers.clear()
+        self._persist()
+        self._refresh_server_list()
+        self._on_select_server()
+
+    def _on_exit(self, _event: wx.Event) -> None:
+        """Close the window (triggers the normal shutdown via EVT_CLOSE)."""
+        self.Close()
 
     # -- button handlers --------------------------------------------------
 

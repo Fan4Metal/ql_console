@@ -20,6 +20,20 @@ _current = _DEFAULT
 _TRANSLATIONS: dict[str, dict[str, str]] = {
     # Window / menu
     "app_title": {"en": "Quake Live RCON Console", "ru": "Quake Live RCON Console"},
+    "menu_file": {"en": "File", "ru": "Файл"},
+    "menu_save_servers": {
+        "en": "Save server list…",
+        "ru": "Сохранить список серверов…",
+    },
+    "menu_load_servers": {
+        "en": "Load server list…",
+        "ru": "Загрузить список серверов…",
+    },
+    "menu_clear_servers": {
+        "en": "Clear server list",
+        "ru": "Очистить список серверов",
+    },
+    "menu_exit": {"en": "Exit\tAlt+F4", "ru": "Выход\tAlt+F4"},
     "menu_settings": {"en": "Settings", "ru": "Настройки"},
     "menu_open_settings": {"en": "Settings…\tCtrl+,", "ru": "Настройки…\tCtrl+,"},
     "menu_help": {"en": "Help", "ru": "Справка"},
@@ -68,6 +82,22 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
     "title_confirm": {"en": "Confirm", "ru": "Подтверждение"},
     "msg_not_connected": {"en": "Not connected.", "ru": "Нет подключения."},
     "title_send": {"en": "Send", "ru": "Отправка"},
+    # Save / load / clear server list
+    "dlg_save_servers": {"en": "Save server list", "ru": "Сохранить список серверов"},
+    "dlg_load_servers": {"en": "Load server list", "ru": "Загрузить список серверов"},
+    "confirm_clear_servers": {
+        "en": "Clear the entire server list?",
+        "ru": "Очистить весь список серверов?",
+    },
+    "title_error": {"en": "Error", "ru": "Ошибка"},
+    "msg_save_failed": {
+        "en": "Could not save the file:\n{error}",
+        "ru": "Не удалось сохранить файл:\n{error}",
+    },
+    "msg_load_failed": {
+        "en": "Could not load the file — it is missing or not a valid server list:\n{error}",
+        "ru": "Не удалось загрузить файл — он отсутствует или не является корректным списком серверов:\n{error}",
+    },
     # Server dialog
     "dlg_add_server": {"en": "Add Server", "ru": "Добавить сервер"},
     "dlg_edit_server": {"en": "Edit Server", "ru": "Изменить сервер"},
