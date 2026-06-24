@@ -74,6 +74,9 @@ _CONNECT_QUERY = ("players", "sv_hostname", "mapname", "sv_maxclients")
 # Non-printable control bytes Quake embeds around chat/names (shown as boxes).
 _CONTROL_RE = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
 
+# Trailing whitespace and stray closing quote(s) left after unwrapping.
+_TRAILING_JUNK_RE = re.compile(r'[\s"]+$')
+
 
 def _clean_output_line(text: str) -> str:
     """Strip QL ``print "..."`` wrappers, stray quotes and control bytes.
@@ -82,12 +85,17 @@ def _clean_output_line(text: str) -> str:
     the closing quote ends up glued to the next ``print "``. This unwraps both
     leading wrappers and the ``prefix: print "..."`` form, drops the dangling
     quote, and removes non-printable control characters that render as boxes.
+
+    Some lines (e.g. ``broadcast``) embed *literal* escape sequences — a real
+    backslash-n the server never interpreted — followed by the stray quote, so
+    they render as ``...message\\n"``. Those literal escapes are dropped too.
     """
     s = text.lstrip('"')
     if s.startswith('print "'):
         s = s[len('print "') :]
     s = s.replace(': print "', ': ')
-    s = s.rstrip('"')
+    s = s.replace("\\n", "").replace("\\r", "")  # drop literal escape sequences
+    s = _TRAILING_JUNK_RE.sub("", s)  # trailing whitespace + stray quote(s)
     return _CONTROL_RE.sub("", s)
 
 
@@ -712,7 +720,47 @@ class MainFrame(wx.Frame):
         if len(store) > MAX_LINES:
             del store[: len(store) - MAX_LINES]
         if server is self._selected_server():
+            self._append_line(ctrl, runs)
+
+    def _append_line(self, ctrl: wx.TextCtrl, runs: Line) -> None:
+        """Append a live line, keeping a scrolled-up reader (or selection) put.
+
+        ``AppendText`` (used by ``_render_line``) jumps to the end and drops any
+        active selection. On a busy server that makes the console feel locked —
+        you can't keep text selected or read scrolled-up history.
+
+        Common case (at the tail, nothing selected): just append. ``AppendText``
+        follows the tail on its own — same as a plain log view — with no extra
+        scrolling, so there's no flicker and nothing to blank the control.
+
+        Otherwise the user is reading scrolled-up history or has text selected:
+        remember the line at the top of the viewport, append (which force-scrolls
+        to the end), then scroll back to that line and restore the selection.
+        """
+        sel_from, sel_to = ctrl.GetSelection()
+        has_sel = sel_from != sel_to
+        if not has_sel and self._at_tail(ctrl):
             self._render_line(ctrl, runs)
+            return
+
+        _, anchor = ctrl.HitTestPos(wx.Point(2, 2))  # position at the viewport top
+        self._render_line(ctrl, runs)
+        if has_sel:
+            ctrl.SetSelection(sel_from, sel_to)
+        ctrl.ShowPosition(anchor)
+
+    @staticmethod
+    def _at_tail(ctrl: wx.TextCtrl) -> bool:
+        """True if the last line is currently visible (view at the bottom).
+
+        The scrollbar metrics are unreliable for a rich TextCtrl on MSW
+        (``GetScrollThumb`` reports 0), so probe the character at the bottom of
+        the viewport: it's the end of the text — or empty space below it — only
+        when scrolled to the tail. Also true when the content fits (no scroll).
+        """
+        height = ctrl.GetClientSize().height
+        result, pos = ctrl.HitTestPos(wx.Point(2, height - 2))
+        return result == wx.TE_HT_BELOW or pos >= ctrl.GetLastPosition()
 
     def _render_line(self, ctrl: wx.TextCtrl, runs: Line) -> None:
         for rgb, text in runs:
