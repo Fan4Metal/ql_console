@@ -139,7 +139,7 @@ GENERATED_CVARS = [
     ('sv_hostname', '= "noname"'),
     ('qlx_motdSound', ''),
     ('qlx_votepassThreshold', ''),
-    ('qlx_owner', '= "76561198029055382"'),
+    ('qlx_owner', ''),
     ('zmq_stats_password', ''),
     ('zmq_rcon_password', ''),
     ('zmq_stats_ip', '= "0.0.0.0"'),

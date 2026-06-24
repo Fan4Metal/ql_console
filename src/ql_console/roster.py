@@ -28,10 +28,10 @@ class Player:
         return self.steam_id or f"name:{self.name.lower()}"
 
 
-# A line of `players` output, e.g.:  ` 2 76561198029055382 A Metal Fan`
+# A line of `players` output, e.g.:  ` 2 76561190000000001 A Player One`
 # The single team column may be a letter (A/R/B/...) or blank:
-#   ` 3 76561198055014035   Shadich`  (no team -> extra spaces)
-# Lines arrive wrapped by the server as: print " 2 ... Metal Fan\n"
+#   ` 3 76561190000000002   Player Two`  (no team -> extra spaces)
+# Lines arrive wrapped by the server as: print " 2 ... Player One\n"
 _PLAYER_LINE = re.compile(
     r"^\s*(?P<pid>\d+)\s+(?P<steam>\d{15,18})\s(?P<team>\S?)\s+(?P<name>\S.*?)\s*$"
 )

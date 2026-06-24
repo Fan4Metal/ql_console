@@ -120,8 +120,8 @@ class AutoComplete:
     def _token_for(entry: Entry) -> str:
         """Text inserted for a chosen entry.
 
-        Player names can contain spaces (``Metal Fan``); the server would read
-        only the first word, so wrap such names in quotes (``"Metal Fan"``).
+        Player names can contain spaces (``Player One``); the server would read
+        only the first word, so wrap such names in quotes (``"Player One"``).
         Numeric slot entries and single-word names are inserted as-is.
         """
         name = entry.name
