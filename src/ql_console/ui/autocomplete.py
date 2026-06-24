@@ -110,11 +110,24 @@ class AutoComplete:
             return
         value = self.text.GetValue()
         # Replace just the active token (value[self._start:]) with the choice.
-        new_value = value[: self._start] + self.entries[idx].name + self._suffix
+        new_value = value[: self._start] + self._token_for(self.entries[idx]) + self._suffix
         self.text.ChangeValue(new_value)  # ChangeValue: don't re-trigger EVT_TEXT
         self.text.SetInsertionPointEnd()
         self.hide()
         self.text.SetFocus()
+
+    @staticmethod
+    def _token_for(entry: Entry) -> str:
+        """Text inserted for a chosen entry.
+
+        Player names can contain spaces (``Metal Fan``); the server would read
+        only the first word, so wrap such names in quotes (``"Metal Fan"``).
+        Numeric slot entries and single-word names are inserted as-is.
+        """
+        name = entry.name
+        if entry.kind == PLAYER and any(ch.isspace() for ch in name):
+            return f'"{name}"'
+        return name
 
     # -- internals --------------------------------------------------------
 

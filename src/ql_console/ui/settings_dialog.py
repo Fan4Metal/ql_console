@@ -49,8 +49,20 @@ class SettingsDialog(wx.Dialog):
         cur = self._settings.language
         self.language.SetSelection(self._lang_codes.index(cur) if cur in self._lang_codes else 0)
 
+        # Hint language: "" (follow interface) plus each explicit language.
+        self._hint_codes = ["", *self._lang_codes]
+        self.hint_language = wx.Choice(
+            parent, choices=[t("hint_lang_same")] + [LANGUAGES[c] for c in self._lang_codes]
+        )
+        hcur = self._settings.hint_language
+        self.hint_language.SetSelection(
+            self._hint_codes.index(hcur) if hcur in self._hint_codes else 0
+        )
+
         grid.Add(wx.StaticText(parent, label=t("lbl_language")), 0, wx.ALIGN_CENTER_VERTICAL)
         grid.Add(self.language, 1, wx.EXPAND)
+        grid.Add(wx.StaticText(parent, label=t("lbl_hint_language")), 0, wx.ALIGN_CENTER_VERTICAL)
+        grid.Add(self.hint_language, 1, wx.EXPAND)
         box.Add(grid, 0, wx.EXPAND | wx.ALL, 8)
         return box
 
@@ -98,8 +110,10 @@ class SettingsDialog(wx.Dialog):
         face = "" if sel <= 0 else self._faces[sel - 1]
         bg = colors.to_hex(tuple(self.bg_picker.GetColour().Get()[:3]))
         lang = self._lang_codes[self.language.GetSelection()]
+        hint_lang = self._hint_codes[self.hint_language.GetSelection()]
         return AppSettings(
             language=lang,
+            hint_language=hint_lang,
             hide_rcon_echo=self.hide_echo.GetValue(),
             clean_output=self.clean_output.GetValue(),
             console_font_face=face,

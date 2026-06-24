@@ -53,6 +53,7 @@ class AppSettings:
 
     # General
     language: str = "ru"  # UI language code ("en" / "ru")
+    hint_language: str = ""  # autocomplete-hint language; "" = follow the UI language
     # View
     hide_rcon_echo: bool = True  # hide "zmq RCON command from ..." echo lines
     clean_output: bool = True  # strip print "..." wrappers/stray quotes from output

@@ -22,6 +22,14 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
     "app_title": {"en": "Quake Live RCON Console", "ru": "Quake Live RCON Console"},
     "menu_settings": {"en": "Settings", "ru": "Настройки"},
     "menu_open_settings": {"en": "Settings…\tCtrl+,", "ru": "Настройки…\tCtrl+,"},
+    "menu_help": {"en": "Help", "ru": "Справка"},
+    "menu_about": {"en": "About…", "ru": "О программе…"},
+    "about_title": {"en": "About", "ru": "О программе"},
+    "about_text": {
+        "en": "Quake Live RCON Console\nVersion {version}\n\nA console for administering Quake Live servers over RCON.",
+        "ru": "Quake Live RCON Console\nВерсия {version}\n\nКонсоль для администрирования серверов Quake Live по RCON.",
+    },
+    "about_github": {"en": "GitHub page", "ru": "Страница на GitHub"},
     # Server list buttons
     "btn_add": {"en": "Add", "ru": "Добавить"},
     "btn_edit": {"en": "Edit", "ru": "Изменить"},
@@ -79,6 +87,8 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
     "section_general": {"en": "General", "ru": "Общие"},
     "section_view": {"en": "View", "ru": "Вид"},
     "lbl_language": {"en": "Language:", "ru": "Язык:"},
+    "lbl_hint_language": {"en": "Hint language:", "ru": "Язык подсказок:"},
+    "hint_lang_same": {"en": "Same as interface", "ru": "Как в интерфейсе"},
     "chk_hide_echo": {
         "en": "Hide RCON command echo",
         "ru": "Скрывать эхо RCON-команд",

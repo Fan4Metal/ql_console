@@ -14,11 +14,13 @@ import wx
 
 from .. import __version__, colors
 from ..colors import RGB
+from ..commands import set_hint_language
 from ..config import AppConfig, ServerConfig, load_config, save_config
 from ..i18n import set_language, t
 from ..connection import ServerConnection
 from ..rcon_client import ERR_AUTH_FAILED, ERR_MAX_ATTEMPTS, MAX_ATTEMPTS
 from ..roster import Player, Roster, parse_players_line
+from .about_dialog import AboutDialog
 from .appicon import load_app_icon
 from .autocomplete import AutoComplete
 from .server_dialog import ServerDialog
@@ -127,6 +129,7 @@ class MainFrame(wx.Frame):
         self.SetIcon(load_app_icon())
         self.config: AppConfig = load_config()
         set_language(self.config.settings.language)
+        set_hint_language(self.config.settings.hint_language)
         self.SetTitle(self._window_title())
         # State keyed by the id() of each ServerConfig object.
         self._state: dict[int, _ServerState] = {}
@@ -151,7 +154,18 @@ class MainFrame(wx.Frame):
         self._mi_settings = settings.Append(wx.ID_PREFERENCES, t("menu_open_settings"))
         self.Bind(wx.EVT_MENU, self._on_open_settings, self._mi_settings)
         self._menubar.Append(settings, t("menu_settings"))
+
+        help_menu = wx.Menu()
+        self._mi_about = help_menu.Append(wx.ID_ABOUT, t("menu_about"))
+        self.Bind(wx.EVT_MENU, self._on_about, self._mi_about)
+        self._menubar.Append(help_menu, t("menu_help"))
+
         self.SetMenuBar(self._menubar)
+
+    def _on_about(self, _event: wx.Event) -> None:
+        dialog = AboutDialog(self)
+        dialog.ShowModal()
+        dialog.Destroy()
 
     def _on_open_settings(self, _event: wx.Event) -> None:
         dialog = SettingsDialog(self, self.config.settings)
@@ -160,6 +174,7 @@ class MainFrame(wx.Frame):
             language_changed = new.language != self.config.settings.language
             self.config.settings = new
             self._persist()
+            set_hint_language(new.hint_language)
             self._apply_view_settings()
             if language_changed:
                 set_language(new.language)
@@ -174,6 +189,8 @@ class MainFrame(wx.Frame):
         self.SetTitle(self._window_title())
         self._menubar.SetMenuLabel(0, t("menu_settings"))
         self._mi_settings.SetItemLabel(t("menu_open_settings"))
+        self._menubar.SetMenuLabel(1, t("menu_help"))
+        self._mi_about.SetItemLabel(t("menu_about"))
         self.btn_add.SetLabel(t("btn_add"))
         self.btn_edit.SetLabel(t("btn_edit"))
         self.btn_remove.SetLabel(t("btn_remove"))
@@ -602,7 +619,10 @@ class MainFrame(wx.Frame):
                     continue
             if hide_echo and is_echo:
                 continue
-            if self.config.settings.clean_output:
+            # Cvar query replies (`"name" is:"..." default:"..."`) aren't
+            # print-wrapped; cleaning would strip their meaningful quotes and
+            # mangle the line, so leave such lines untouched.
+            if self.config.settings.clean_output and not _CVAR_RESPONSE_RE.match(line):
                 line = _clean_output_line(line)
                 if not line.strip():
                     continue  # nothing left after unwrapping (e.g. a lone quote)
