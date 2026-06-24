@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!-- Placeholder app icon. Edit this and re-run tools/make_icon.py to regenerate icon.png/icon.ico. -->
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
-  <rect width="256" height="256" rx="48" fill="#18181c"/>
-  <rect x="16" y="16" width="224" height="224" rx="36" fill="none" stroke="#eb3c3c" stroke-width="8"/>
-  <text x="128" y="138" font-family="Consolas, 'Cascadia Code', monospace" font-size="120"
-        font-weight="bold" fill="#eb3c3c" text-anchor="middle" dominant-baseline="central">QL</text>
-</svg>
