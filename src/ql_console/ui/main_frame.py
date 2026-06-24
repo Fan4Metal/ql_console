@@ -174,7 +174,8 @@ class MainFrame(wx.Frame):
         self.btn_send.SetLabel(t("btn_send"))
         self.btn_clear.SetLabel(t("btn_clear"))
         self.notebook.SetPageText(0, t("tab_console"))
-        self.notebook.SetPageText(1, t("tab_events"))
+        if self.notebook.GetPageCount() > 1:
+            self.notebook.SetPageText(1, t("tab_events"))
         server = self._selected_server()
         if server is not None:
             self._update_status_bar(server)
@@ -209,6 +210,11 @@ class MainFrame(wx.Frame):
         self.server_list.SetMinSize(self.FromDIP(wx.Size(240, -1)))
         self.server_list.Bind(wx.EVT_LISTBOX, lambda _e: self._on_select_server())
         self.server_list.Bind(wx.EVT_LISTBOX_DCLICK, self._on_list_dclick)
+        # Drag-and-drop reordering of the server list.
+        self._drag_index = wx.NOT_FOUND
+        self.server_list.Bind(wx.EVT_LEFT_DOWN, self._on_list_left_down)
+        self.server_list.Bind(wx.EVT_MOTION, self._on_list_motion)
+        self.server_list.Bind(wx.EVT_LEFT_UP, self._on_list_left_up)
         left.Add(self.server_list, 1, wx.EXPAND | wx.BOTTOM, 6)
 
         btns = wx.GridSizer(rows=3, cols=2, vgap=4, hgap=4)
@@ -272,22 +278,25 @@ class MainFrame(wx.Frame):
         console_page.SetSizer(cp_sizer)
         notebook.AddPage(console_page, t("tab_console"))
 
-        events_page = wx.Panel(notebook)
+        self.events_page = wx.Panel(notebook)
         ep_sizer = wx.BoxSizer(wx.VERTICAL)
         self.events_ctrl = wx.TextCtrl(
-            events_page, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2
+            self.events_page, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2
         )
         self.events_ctrl.SetFont(mono)
         self.events_ctrl.SetBackgroundColour(bg)
         self.events_ctrl.SetForegroundColour(fg)
         ep_sizer.Add(self.events_ctrl, 1, wx.EXPAND)
-        events_page.SetSizer(ep_sizer)
-        notebook.AddPage(events_page, t("tab_events"))
+        self.events_page.SetSizer(ep_sizer)
+        notebook.AddPage(self.events_page, t("tab_events"))
 
         root.Add(notebook, 1, wx.EXPAND | wx.ALL, 8)
         panel.SetSizer(root)
 
-        self.CreateStatusBar(2)
+        # Three fields: RCON status, stats status, and a filler that eats the
+        # remaining width so the first two stay packed on the left edge.
+        self.CreateStatusBar(3)
+        self.GetStatusBar().SetStatusWidths([self.FromDIP(200), self.FromDIP(180), -1])
         self._set_status(t("status_ready"))
 
     # -- server list / config management ----------------------------------
@@ -380,6 +389,46 @@ class MainFrame(wx.Frame):
         self.config.servers.pop(self._selected_index())
         self._persist()
         self._refresh_server_list()
+        self._on_select_server()
+
+    # -- drag-and-drop reordering -----------------------------------------
+
+    def _on_list_left_down(self, event: wx.MouseEvent) -> None:
+        event.Skip()  # let the click select the row as usual
+        self._drag_index = self.server_list.HitTest(event.GetPosition())
+
+    def _on_list_motion(self, event: wx.MouseEvent) -> None:
+        event.Skip()
+        dragging = event.Dragging() and event.LeftIsDown() and self._drag_index != wx.NOT_FOUND
+        self.server_list.SetCursor(
+            wx.Cursor(wx.CURSOR_HAND if dragging else wx.CURSOR_DEFAULT)
+        )
+
+    def _on_list_left_up(self, event: wx.MouseEvent) -> None:
+        event.Skip()
+        self.server_list.SetCursor(wx.Cursor(wx.CURSOR_DEFAULT))
+        src = self._drag_index
+        self._drag_index = wx.NOT_FOUND
+        if src == wx.NOT_FOUND:
+            return
+        dst = self.server_list.HitTest(event.GetPosition())
+        if dst == wx.NOT_FOUND:  # dropped past the last row -> move to the end
+            dst = self.server_list.GetCount() - 1
+        if dst == src or dst == wx.NOT_FOUND:
+            return
+        self._move_server(src, dst)
+
+    def _move_server(self, src: int, dst: int) -> None:
+        """Reorder the server list, keeping the moved server selected.
+
+        The same ServerConfig object is moved, so per-server state (keyed by
+        ``id(server)``) and any live connection are preserved.
+        """
+        servers = self.config.servers
+        servers.insert(dst, servers.pop(src))
+        self._persist()
+        self._refresh_server_list()
+        self.server_list.SetSelection(dst)
         self._on_select_server()
 
     def _on_list_dclick(self, _event: wx.Event) -> None:
@@ -482,17 +531,30 @@ class MainFrame(wx.Frame):
     def _on_select_server(self) -> None:
         server = self._selected_server()
         if server is None:
+            self._update_events_tab(None)
             self.console_ctrl.SetValue("")
             self.events_ctrl.SetValue("")
             self._history_pos = 0
             self._update_buttons()
             return
         state = self._state_for(server)
+        self._update_events_tab(server)
         self._render_all(self.console_ctrl, state.console)
-        self._render_all(self.events_ctrl, state.events)
+        if server.stats_enabled:
+            self._render_all(self.events_ctrl, state.events)
         self._history_pos = len(state.history)
         self._update_buttons()
         self._update_status_bar(server)
+
+    def _update_events_tab(self, server: ServerConfig | None) -> None:
+        """Show the stats/events tab only when the server has stats enabled."""
+        show = server is not None and server.stats_enabled
+        has_tab = self.notebook.GetPageCount() > 1
+        if show and not has_tab:
+            self.notebook.AddPage(self.events_page, t("tab_events"))
+        elif not show and has_tab:
+            self.notebook.RemovePage(1)  # keeps the panel alive (not Delete)
+            self.events_page.Hide()
 
     def _update_buttons(self) -> None:
         server = self._selected_server()

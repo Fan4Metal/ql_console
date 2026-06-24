@@ -70,6 +70,10 @@ class AutoComplete:
         self.text.Bind(wx.EVT_TEXT, self._on_text)
         self.text.Bind(wx.EVT_KILL_FOCUS, self._on_kill_focus)
         self.popup.listbox.Bind(wx.EVT_LISTBOX, lambda _e: self.accept())
+        # The popup is a separate top-level window; keep it glued to the input
+        # by following the frame as it moves or resizes.
+        self.frame.Bind(wx.EVT_MOVE, self._on_frame_move)
+        self.frame.Bind(wx.EVT_SIZE, self._on_frame_move)
 
     # -- public API used by the owning frame ------------------------------
 
@@ -201,6 +205,11 @@ class AutoComplete:
         self.popup.SetSize(rect.width, height)
         self.popup.SetPosition(wx.Point(rect.x, rect.y + rect.height))
         self.popup.Layout()
+
+    def _on_frame_move(self, event: wx.Event) -> None:
+        event.Skip()
+        if self.popup.IsShown():
+            self._reposition()
 
     def _on_kill_focus(self, event: wx.FocusEvent) -> None:
         event.Skip()

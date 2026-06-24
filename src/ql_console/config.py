@@ -31,7 +31,7 @@ class ServerConfig:
     rcon_password: str = ""
     stats_port: int = 27960
     stats_password: str = ""
-    stats_enabled: bool = True
+    stats_enabled: bool = False  # off by default — stats is verbose, mainly for debugging
 
     @property
     def rcon_endpoint(self) -> str:
@@ -56,9 +56,9 @@ class AppSettings:
     # View
     hide_rcon_echo: bool = True  # hide "zmq RCON command from ..." echo lines
     clean_output: bool = True  # strip print "..." wrappers/stray quotes from output
-    console_font_face: str = ""  # empty = default monospace font
+    console_font_face: str = "Consolas"  # empty = default monospace font
     console_font_size: int = 11
-    console_bg: str = "#18181c"  # console/events background color
+    console_bg: str = "#000000"  # console/events background color
 
     @classmethod
     def from_dict(cls, data: dict) -> "AppSettings":
