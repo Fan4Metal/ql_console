@@ -1,4 +1,4 @@
-# ql-console
+# <img src="src/ql_console/assets/icon.png" height="32" alt="ql" valign="middle">-console
 
 ***English** · [Русский](README.md)*
 
