@@ -46,6 +46,18 @@ class ConsoleView(stc.StyledTextCtrl):
         self.SetCaretLineVisible(False)
         self.SetReadOnly(True)
 
+        # "Follow the tail" is a sticky intent, not a per-append geometry test.
+        # Wrap layout is computed lazily, so re-deriving "are we at the bottom?"
+        # on every append misfires during a burst of long, wrapping lines (e.g.
+        # the paths a map load dumps): one check lands before the wrap expands,
+        # reads as "scrolled up", and freezes the view for good. Instead we
+        # follow until the user scrolls away and resume when they scroll back to
+        # the bottom -- recomputed only on real scroll input, never mid-burst.
+        self._follow = True
+        self.Bind(wx.EVT_MOUSEWHEEL, self._on_user_scroll)
+        self.Bind(wx.EVT_SCROLLWIN, self._on_user_scroll)
+        self.Bind(wx.EVT_KEY_DOWN, self._on_user_scroll)
+
     # -- theming ----------------------------------------------------------
 
     def configure(self, font: wx.Font, bg: wx.Colour) -> None:
@@ -92,10 +104,9 @@ class ConsoleView(stc.StyledTextCtrl):
         self.SetReadOnly(True)
 
     def append_line(self, runs: Line) -> None:
-        """Append a live line, following the tail only if the view is at it."""
-        follow = self._follows_tail()
+        """Append a live line, following the tail unless the user scrolled away."""
         self._emit(runs)
-        if follow:
+        if self._follow:
             self.ScrollToEnd()
 
     def render_all(self, lines: list[Line]) -> None:
@@ -105,12 +116,24 @@ class ConsoleView(stc.StyledTextCtrl):
         self.SetReadOnly(True)
         for runs in lines:
             self._emit(runs)
+        self._follow = True
         self.ScrollToEnd()
 
     def clear(self) -> None:
         self.SetReadOnly(False)
         self.ClearAll()
         self.SetReadOnly(True)
+        self._follow = True
+
+    def _on_user_scroll(self, event: wx.Event) -> None:
+        """Re-evaluate the follow intent after the user scrolls the view."""
+        # Let Scintilla move the viewport first, then measure where it landed.
+        event.Skip()
+        wx.CallAfter(self._sync_follow)
+
+    def _sync_follow(self) -> None:
+        if self:  # the window may already be gone when CallAfter runs
+            self._follow = self._follows_tail()
 
     def _follows_tail(self) -> bool:
         """True when the last line is visible (view pinned to the bottom)."""
