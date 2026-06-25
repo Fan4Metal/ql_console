@@ -49,6 +49,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
     "btn_remove": {"en": "Remove", "ru": "Удалить"},
     "btn_connect": {"en": "Connect", "ru": "Подключить"},
     "btn_disconnect": {"en": "Disconnect", "ru": "Отключить"},
+    "menu_launch_steam": {"en": "Launch in Steam", "ru": "Запустить в Steam"},
     # Console
     "tab_console": {"en": "Console", "ru": "Консоль"},
     "tab_events": {"en": "Events", "ru": "События"},

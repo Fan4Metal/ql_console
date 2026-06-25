@@ -41,6 +41,15 @@ class ServerConfig:
     def stats_endpoint(self) -> str:
         return f"tcp://{self.host}:{self.stats_port}"
 
+    @property
+    def game_port(self) -> int:
+        """Port players connect to: QL puts RCON 1000 above the game port."""
+        return self.rcon_port - 1000
+
+    @property
+    def steam_connect_url(self) -> str:
+        return f"steam://connect/{self.host}:{self.game_port}"
+
     @classmethod
     def from_dict(cls, data: dict) -> "ServerConfig":
         known = {f for f in cls.__dataclass_fields__}  # type: ignore[attr-defined]

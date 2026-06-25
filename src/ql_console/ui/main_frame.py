@@ -586,6 +586,8 @@ class MainFrame(wx.Frame):
         else:
             mi_toggle = menu.Append(wx.ID_ANY, t("btn_connect"))
             self.Bind(wx.EVT_MENU, self._on_connect, mi_toggle)
+        mi_steam = menu.Append(wx.ID_ANY, t("menu_launch_steam"))
+        self.Bind(wx.EVT_MENU, self._on_launch_steam, mi_steam)
         menu.AppendSeparator()
         mi_edit = menu.Append(wx.ID_ANY, t("btn_edit"))
         mi_edit.Enable(not connected)
@@ -605,6 +607,13 @@ class MainFrame(wx.Frame):
             self.command_input.SetFocus()
             return
         self._on_connect(None)
+
+    def _on_launch_steam(self, _event: wx.Event) -> None:
+        """Hand the server's steam://connect/ URL to Steam via the OS handler."""
+        server = self._selected_server()
+        if server is None:
+            return
+        wx.LaunchDefaultBrowser(server.steam_connect_url)
 
     def _on_connect(self, _event: wx.Event) -> None:
         server = self._selected_server()
