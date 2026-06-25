@@ -159,17 +159,15 @@ class MainFrame(wx.Frame):
         file_menu.AppendSeparator()
         self._mi_clear_servers = file_menu.Append(wx.ID_ANY, t("menu_clear_servers"))
         file_menu.AppendSeparator()
+        self._mi_settings = file_menu.Append(wx.ID_PREFERENCES, t("menu_open_settings"))
+        file_menu.AppendSeparator()
         self._mi_exit = file_menu.Append(wx.ID_EXIT, t("menu_exit"))
         self.Bind(wx.EVT_MENU, self._on_save_servers, self._mi_save_servers)
         self.Bind(wx.EVT_MENU, self._on_load_servers, self._mi_load_servers)
         self.Bind(wx.EVT_MENU, self._on_clear_servers, self._mi_clear_servers)
+        self.Bind(wx.EVT_MENU, self._on_open_settings, self._mi_settings)
         self.Bind(wx.EVT_MENU, self._on_exit, self._mi_exit)
         self._menubar.Append(file_menu, t("menu_file"))
-
-        settings = wx.Menu()
-        self._mi_settings = settings.Append(wx.ID_PREFERENCES, t("menu_open_settings"))
-        self.Bind(wx.EVT_MENU, self._on_open_settings, self._mi_settings)
-        self._menubar.Append(settings, t("menu_settings"))
 
         help_menu = wx.Menu()
         self._mi_about = help_menu.Append(wx.ID_ABOUT, t("menu_about"))
@@ -217,10 +215,9 @@ class MainFrame(wx.Frame):
         self._mi_save_servers.SetItemLabel(t("menu_save_servers"))
         self._mi_load_servers.SetItemLabel(t("menu_load_servers"))
         self._mi_clear_servers.SetItemLabel(t("menu_clear_servers"))
-        self._mi_exit.SetItemLabel(t("menu_exit"))
-        self._menubar.SetMenuLabel(1, t("menu_settings"))
         self._mi_settings.SetItemLabel(t("menu_open_settings"))
-        self._menubar.SetMenuLabel(2, t("menu_help"))
+        self._mi_exit.SetItemLabel(t("menu_exit"))
+        self._menubar.SetMenuLabel(1, t("menu_help"))
         self._mi_about.SetItemLabel(t("menu_about"))
         self.btn_add.SetLabel(t("btn_add"))
         self.btn_edit.SetLabel(t("btn_edit"))
@@ -267,6 +264,7 @@ class MainFrame(wx.Frame):
         self.server_list.SetMinSize(self.FromDIP(wx.Size(240, -1)))
         self.server_list.Bind(wx.EVT_LISTBOX, lambda _e: self._on_select_server())
         self.server_list.Bind(wx.EVT_LISTBOX_DCLICK, self._on_list_dclick)
+        self.server_list.Bind(wx.EVT_CONTEXT_MENU, self._on_list_context_menu)
         # Drag-and-drop reordering of the server list.
         self._drag_index = wx.NOT_FOUND
         self.server_list.Bind(wx.EVT_LEFT_DOWN, self._on_list_left_down)
@@ -558,6 +556,37 @@ class MainFrame(wx.Frame):
         self._refresh_server_list()
         self.server_list.SetSelection(dst)
         self._on_select_server()
+
+    def _on_list_context_menu(self, event: wx.ContextMenuEvent) -> None:
+        """Right-click a server to connect/disconnect, edit or remove it."""
+        # Select the row under the cursor first, so the action targets it.
+        pos = event.GetPosition()
+        if pos != wx.DefaultPosition:  # keyboard menu key reports DefaultPosition
+            idx = self.server_list.HitTest(self.server_list.ScreenToClient(pos))
+            if idx != wx.NOT_FOUND:
+                self.server_list.SetSelection(idx)
+                self._on_select_server()
+        server = self._selected_server()
+        if server is None:
+            return
+        connected = bool(self._state.get(id(server), _ServerState()).connection)
+
+        menu = wx.Menu()
+        if connected:
+            mi_toggle = menu.Append(wx.ID_ANY, t("btn_disconnect"))
+            self.Bind(wx.EVT_MENU, self._on_disconnect, mi_toggle)
+        else:
+            mi_toggle = menu.Append(wx.ID_ANY, t("btn_connect"))
+            self.Bind(wx.EVT_MENU, self._on_connect, mi_toggle)
+        menu.AppendSeparator()
+        mi_edit = menu.Append(wx.ID_ANY, t("btn_edit"))
+        mi_edit.Enable(not connected)
+        self.Bind(wx.EVT_MENU, self._on_edit, mi_edit)
+        mi_remove = menu.Append(wx.ID_ANY, t("btn_remove"))
+        self.Bind(wx.EVT_MENU, self._on_remove, mi_remove)
+
+        self.server_list.PopupMenu(menu)
+        menu.Destroy()
 
     def _on_list_dclick(self, _event: wx.Event) -> None:
         """Double-click a server to connect (no-op if already connected)."""

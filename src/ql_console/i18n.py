@@ -34,7 +34,6 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "ru": "Очистить список серверов",
     },
     "menu_exit": {"en": "Exit\tAlt+F4", "ru": "Выход\tAlt+F4"},
-    "menu_settings": {"en": "Settings", "ru": "Настройки"},
     "menu_open_settings": {"en": "Settings…\tCtrl+,", "ru": "Настройки…\tCtrl+,"},
     "menu_help": {"en": "Help", "ru": "Справка"},
     "menu_about": {"en": "About…", "ru": "О программе…"},
