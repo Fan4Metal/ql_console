@@ -53,7 +53,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
     "tab_console": {"en": "Console", "ru": "Консоль"},
     "tab_events": {"en": "Events", "ru": "События"},
     "btn_send": {"en": "Send", "ru": "Отправить"},
-    "btn_clear": {"en": "Clear", "ru": "Очистить"},
+    "btn_clear": {"en": "Clear console", "ru": "Очистить консоль"},
     # Status bar
     "status_ready": {"en": "Ready", "ru": "Готово"},
     "status_rcon": {"en": "RCON: {status}", "ru": "RCON: {status}"},

@@ -225,7 +225,7 @@ class MainFrame(wx.Frame):
         self.btn_connect.SetLabel(t("btn_connect"))
         self.btn_disconnect.SetLabel(t("btn_disconnect"))
         self.btn_send.SetLabel(t("btn_send"))
-        self.btn_clear.SetLabel(t("btn_clear"))
+        self.btn_clear.SetToolTip(t("btn_clear"))
         self.notebook.SetPageText(0, t("tab_console"))
         if self.notebook.GetPageCount() > 1:
             self.notebook.SetPageText(1, t("tab_events"))
@@ -320,8 +320,16 @@ class MainFrame(wx.Frame):
         self._autocomplete = AutoComplete(self.command_input, roster_provider=self._current_roster)
         self.btn_send = wx.Button(console_page, label=t("btn_send"))
         self.btn_send.Bind(wx.EVT_BUTTON, self._on_send)
-        self.btn_clear = wx.Button(console_page, label=t("btn_clear"))
+        # Clear is a compact, square, icon-only button (label kept as tooltip).
+        clear_bmp = wx.ArtProvider.GetBitmap(
+            wx.ART_DELETE, wx.ART_BUTTON, wx.Size(16, 16)
+        )
+        self.btn_clear = wx.BitmapButton(console_page, bitmap=clear_bmp)
+        self.btn_clear.SetToolTip(t("btn_clear"))
         self.btn_clear.Bind(wx.EVT_BUTTON, self._on_clear_console)
+        # Square it to the Send button's height so it lines up in the row.
+        side = self.btn_send.GetBestSize().height
+        self.btn_clear.SetMinSize(wx.Size(side, side))
         input_row.Add(self.command_input, 1, wx.EXPAND | wx.RIGHT, 4)
         input_row.Add(self.btn_send, 0, wx.RIGHT, 4)
         input_row.Add(self.btn_clear, 0)
@@ -742,9 +750,11 @@ class MainFrame(wx.Frame):
             if state.seeding_roster:
                 cvar = _CVAR_RESPONSE_RE.match(line)
                 if cvar is not None:
-                    state.connect_info[cvar.group("name")] = colors.strip_colors(
-                        cvar.group("val")
-                    ).strip()
+                    # QL echoes the canonical casing (e.g. "sv_maxClients"),
+                    # so normalize to lowercase for case-insensitive lookups.
+                    state.connect_info[cvar.group("name").lower()] = (
+                        colors.strip_colors(cvar.group("val")).strip()
+                    )
                     self._maybe_show_summary(server)
                     continue
                 if player is not None or is_echo or not line.strip(' "'):
