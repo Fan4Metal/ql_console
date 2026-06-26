@@ -594,6 +594,10 @@ class MainFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self._on_edit, mi_edit)
         mi_remove = menu.Append(wx.ID_ANY, t("btn_remove"))
         self.Bind(wx.EVT_MENU, self._on_remove, mi_remove)
+        menu.AppendSeparator()
+        mi_disconnect_all = menu.Append(wx.ID_ANY, t("menu_disconnect_all"))
+        mi_disconnect_all.Enable(any(s.connection for s in self._state.values()))
+        self.Bind(wx.EVT_MENU, self._on_disconnect_all, mi_disconnect_all)
 
         self.server_list.PopupMenu(menu)
         menu.Destroy()
@@ -647,6 +651,21 @@ class MainFrame(wx.Frame):
         state.stats_status = "disconnected"
         state.seeding_roster = False
         self._status_line(server, "disconnected", t("log_disconnected"))
+        self._refresh_server_list()
+        self._update_buttons()
+
+    def _on_disconnect_all(self, _event: wx.Event) -> None:
+        """Tear down every live connection at once, updating each row's status."""
+        for server in self.config.servers:
+            state = self._state.get(id(server))
+            if not state or not state.connection:
+                continue
+            state.connection.disconnect()
+            state.connection = None
+            state.rcon_status = "disconnected"
+            state.stats_status = "disconnected"
+            state.seeding_roster = False
+            self._status_line(server, "disconnected", t("log_disconnected"))
         self._refresh_server_list()
         self._update_buttons()
 
