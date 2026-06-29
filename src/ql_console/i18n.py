@@ -73,6 +73,10 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "could not connect after {n} attempts — check the password/port",
         "ru": "не удалось подключиться за {n} попыток — проверьте пароль/порт",
     },
+    "err_timeout": {
+        "en": "no response within {n}s — check the address/port",
+        "ru": "нет ответа за {n} с — проверьте адрес/порт",
+    },
     # Message boxes
     "msg_disconnect_before_edit": {
         "en": "Disconnect before editing this server.",

@@ -14,11 +14,16 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 from collections.abc import Callable
 
 import zmq
+from zmq.utils.monitor import recv_monitor_message
 
 from .rcon_client import (
+    ERR_AUTH_FAILED,
+    ERR_TIMEOUT,
+    HANDSHAKE_TIMEOUT_S,
     STATUS_CONNECTED,
     STATUS_CONNECTING,
     STATUS_DISCONNECTED,
@@ -75,12 +80,34 @@ class StatsClient:
             socket.zap_domain = b"stats"
         socket.setsockopt_string(zmq.SUBSCRIBE, "")
 
-        announced = False
+        # SUB sockets connect asynchronously and have no `register` handshake,
+        # so we watch the monitor socket to learn when the connection is
+        # actually established instead of optimistically announcing it.
+        monitor = socket.get_monitor_socket()
+        connected_ever = False
+        deadline = time.monotonic() + HANDSHAKE_TIMEOUT_S
+        auth_fail_event = getattr(zmq, "EVENT_HANDSHAKE_FAILED_AUTH", None)
         try:
             socket.connect(self._endpoint)
-            self._on_status(STATUS_CONNECTED, self._endpoint)
-            announced = True
             while not self._stop.is_set():
+                try:
+                    ev = recv_monitor_message(monitor, zmq.NOBLOCK)
+                    event = ev["event"]
+                    if event == zmq.EVENT_CONNECTED:
+                        if not connected_ever:
+                            connected_ever = True
+                            self._on_status(STATUS_CONNECTED, self._endpoint)
+                    elif auth_fail_event is not None and event == auth_fail_event:
+                        self._on_status(STATUS_ERROR, ERR_AUTH_FAILED)
+                        break
+                except zmq.error.Again:
+                    pass
+
+                # Never completed a handshake within the grace period.
+                if not connected_ever and time.monotonic() > deadline:
+                    self._on_status(STATUS_ERROR, ERR_TIMEOUT)
+                    break
+
                 if socket.poll(_POLL_TIMEOUT_MS) == 0:
                     continue
                 while True:
@@ -92,8 +119,13 @@ class StatsClient:
         except Exception as exc:
             self._on_status(STATUS_ERROR, str(exc))
         finally:
+            try:
+                socket.disable_monitor()
+                monitor.close(0)
+            except Exception:
+                pass
             socket.close(0)
-            if announced:
+            if connected_ever:
                 self._on_status(STATUS_DISCONNECTED, self._endpoint)
 
     def _dispatch(self, raw: bytes) -> None:

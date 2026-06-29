@@ -19,7 +19,13 @@ from ..commands import set_hint_language
 from ..config import AppConfig, ServerConfig, load_config, save_config
 from ..i18n import set_language, t
 from ..connection import ServerConnection
-from ..rcon_client import ERR_AUTH_FAILED, ERR_MAX_ATTEMPTS, MAX_ATTEMPTS
+from ..rcon_client import (
+    ERR_AUTH_FAILED,
+    ERR_MAX_ATTEMPTS,
+    ERR_TIMEOUT,
+    HANDSHAKE_TIMEOUT_S,
+    MAX_ATTEMPTS,
+)
 from ..roster import Player, Roster, parse_players_line
 from .about_dialog import AboutDialog
 from .appicon import load_app_icon
@@ -871,6 +877,9 @@ class MainFrame(wx.Frame):
                     state.connection.send(cmd)
                 # Fallback in case some query gets no response.
                 wx.CallLater(2000, self._show_connect_summary, server)
+                # Ready for input: put the cursor in the command box.
+                if server is self._selected_server():
+                    self.command_input.SetFocus()
             elif status == "disconnected":
                 state.roster.clear()
                 state.seeding_roster = False
@@ -878,7 +887,11 @@ class MainFrame(wx.Frame):
             state.stats_status = status
         if status == "error":
             self._status_line(server, "error", self._error_message(channel, detail))
-            if channel == "rcon" and detail in (ERR_AUTH_FAILED, ERR_MAX_ATTEMPTS):
+            if channel == "rcon" and detail in (
+                ERR_AUTH_FAILED,
+                ERR_MAX_ATTEMPTS,
+                ERR_TIMEOUT,
+            ):
                 # Terminal RCON failure: tear down so the user can retry Connect.
                 self._teardown_connection(server)
                 return
@@ -941,6 +954,8 @@ class MainFrame(wx.Frame):
             return t("err_auth_failed")
         if detail == ERR_MAX_ATTEMPTS:
             return t("err_max_attempts", n=MAX_ATTEMPTS)
+        if detail == ERR_TIMEOUT:
+            return t("err_timeout", n=int(HANDSHAKE_TIMEOUT_S))
         return f"{channel} {self._state_label('error')}: {detail}"
 
     def _update_status_bar(self, server: ServerConfig) -> None:

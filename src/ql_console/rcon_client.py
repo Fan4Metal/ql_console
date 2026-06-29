@@ -15,6 +15,7 @@ marshalling them onto the wx main thread (via wx.CallAfter).
 from __future__ import annotations
 
 import threading
+import time
 import uuid
 from collections.abc import Callable
 from queue import Empty, Queue
@@ -31,9 +32,15 @@ STATUS_ERROR = "error"
 # Error detail codes sent with STATUS_ERROR (mapped to localized text by the UI).
 ERR_AUTH_FAILED = "auth_failed"
 ERR_MAX_ATTEMPTS = "max_attempts"
+ERR_TIMEOUT = "timeout"
 
 # Stop trying after this many failed (never-authenticated) connection attempts.
 MAX_ATTEMPTS = 3
+
+# Give up if no handshake completes within this many seconds. ZeroMQ connects
+# asynchronously and retries forever, so an unreachable/wrong endpoint would
+# otherwise sit in "connecting" indefinitely with no error.
+HANDSHAKE_TIMEOUT_S = 10.0
 
 _POLL_TIMEOUT_MS = 100
 
@@ -102,7 +109,9 @@ class RconClient:
         monitor = socket.get_monitor_socket()
         registered = False
         self._authenticated = False
+        connected_ever = False
         fail_count = 0
+        deadline = time.monotonic() + HANDSHAKE_TIMEOUT_S
         auth_fail_event = getattr(zmq, "EVENT_HANDSHAKE_FAILED_AUTH", None)
         try:
             socket.connect(self._endpoint)
@@ -115,6 +124,7 @@ class RconClient:
                     if event == zmq.EVENT_CONNECTED:
                         socket.send(b"register")
                         registered = True
+                        connected_ever = True
                         self._on_status(STATUS_CONNECTED, self._endpoint)
                     elif auth_fail_event is not None and event == auth_fail_event:
                         # Server rejected our PLAIN credentials — wrong password.
@@ -134,6 +144,12 @@ class RconClient:
                                 break
                 except zmq.error.Again:
                     pass
+
+                # Never completed a handshake within the grace period: the
+                # endpoint is unreachable/wrong (ZeroMQ would retry forever).
+                if not connected_ever and time.monotonic() > deadline:
+                    self._on_status(STATUS_ERROR, ERR_TIMEOUT)
+                    break
 
                 self._drain_outgoing(socket, registered)
                 self._drain_incoming(socket)
