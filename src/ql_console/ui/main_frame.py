@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import re
+from dataclasses import replace
 from pathlib import Path
 
 import wx
@@ -531,6 +532,19 @@ class MainFrame(wx.Frame):
         self._refresh_server_list()
         self._on_select_server()
 
+    def _on_copy_server(self, _event: wx.Event) -> None:
+        """Duplicate the selected server, inserting a "Copy of ..." right below it."""
+        server = self._selected_server()
+        if server is None:
+            return
+        idx = self._selected_index()
+        clone = replace(server, name=t("copy_name_prefix", name=server.name))
+        self.config.servers.insert(idx + 1, clone)
+        self._persist()
+        self._refresh_server_list()
+        self.server_list.SetSelection(idx + 1)
+        self._on_select_server()
+
     # -- drag-and-drop reordering -----------------------------------------
 
     def _on_list_left_down(self, event: wx.MouseEvent) -> None:
@@ -600,6 +614,8 @@ class MainFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self._on_edit, mi_edit)
         mi_remove = menu.Append(wx.ID_ANY, t("btn_remove"))
         self.Bind(wx.EVT_MENU, self._on_remove, mi_remove)
+        mi_copy = menu.Append(wx.ID_ANY, t("menu_copy_server"))
+        self.Bind(wx.EVT_MENU, self._on_copy_server, mi_copy)
         menu.AppendSeparator()
         mi_disconnect_all = menu.Append(wx.ID_ANY, t("menu_disconnect_all"))
         mi_disconnect_all.Enable(any(s.connection for s in self._state.values()))
