@@ -142,9 +142,12 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
     "log_connecting_to": {"en": "connecting to {endpoint}", "ru": "подключение к {endpoint}"},
     "log_disconnected": {"en": "disconnected", "ru": "отключено"},
     "log_server_summary": {
-        "en": "{name}  ·  map: {map}  ·  players: {players}",
-        "ru": "{name}  ·  карта: {map}  ·  игроков: {players}",
+        "en": "{name}  ·  {gametype}  ·  map: {map}  ·  players: {players}  ·  {gamestate}",
+        "ru": "{name}  ·  {gametype}  ·  карта: {map}  ·  игроков: {players}  ·  {gamestate}",
     },
+    "gamestate_pre_game": {"en": "Warmup", "ru": "Разминка"},
+    "gamestate_count_down": {"en": "Countdown", "ru": "Отсчёт"},
+    "gamestate_in_progress": {"en": "In progress", "ru": "Идёт матч"},
 }
 
 

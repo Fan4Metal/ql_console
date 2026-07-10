@@ -76,10 +76,22 @@ _RCON_ECHO_RE = re.compile(r"zmq RCON command from ")
 # Response to querying a single cvar:  "sv_hostname" is:"QL4^7" default:""
 _CVAR_RESPONSE_RE = re.compile(r'^"(?P<name>\w+)" is:"(?P<val>.*?)(?:\^7)?"')
 
+# A key/value row from `serverinfo` output:  `g_factory           duel`
+# Key is a single token, then a run of spaces, then the value (may contain spaces).
+_SERVERINFO_RE = re.compile(r"^(?P<name>\w+)\s{2,}(?P<val>.+)$")
+
 INFO_COLOR: RGB = (150, 200, 235)
 
-# Cvars queried silently on connect to build the summary line.
-_CONNECT_QUERY = ("players", "sv_hostname", "mapname", "sv_maxclients")
+# QL match phases (g_gameState) -> localizable label keys.
+_GAMESTATE_KEYS = {
+    "PRE_GAME": "gamestate_pre_game",
+    "COUNT_DOWN": "gamestate_count_down",
+    "IN_PROGRESS": "gamestate_in_progress",
+}
+
+# Commands sent silently on connect to build the summary line: `players` seeds
+# the roster, `serverinfo` supplies the name/gametype/map/slots in one response.
+_CONNECT_QUERY = ("players", "serverinfo")
 
 
 # Non-printable control bytes Quake embeds around chat/names (shown as boxes).
@@ -796,19 +808,18 @@ class MainFrame(wx.Frame):
                 state.roster.upsert(player)
             is_echo = bool(_RCON_ECHO_RE.search(line))
             # During the connect window, swallow our silent queries' responses
-            # (cvar replies + echo + player rows + blanks) and build the summary.
+            # (the whole `serverinfo` block, `players` rows, echo, blanks) and
+            # build the summary from the serverinfo key/value rows.
             if state.seeding_roster:
-                cvar = _CVAR_RESPONSE_RE.match(line)
-                if cvar is not None:
+                kv = _SERVERINFO_RE.match(_clean_output_line(line))
+                if kv is not None:
                     # QL echoes the canonical casing (e.g. "sv_maxClients"),
                     # so normalize to lowercase for case-insensitive lookups.
-                    state.connect_info[cvar.group("name").lower()] = (
-                        colors.strip_colors(cvar.group("val")).strip()
+                    state.connect_info[kv.group("name").lower()] = (
+                        colors.strip_colors(kv.group("val")).strip()
                     )
                     self._maybe_show_summary(server)
-                    continue
-                if player is not None or is_echo or not line.strip(' "'):
-                    continue
+                continue  # swallow everything printed during the connect window
             if hide_echo and is_echo:
                 continue
             # Cvar query replies (`"name" is:"..." default:"..."`) aren't
@@ -822,24 +833,45 @@ class MainFrame(wx.Frame):
 
     def _maybe_show_summary(self, server: ServerConfig) -> None:
         state = self._state_for(server)
-        if {"sv_hostname", "mapname", "sv_maxclients"} <= state.connect_info.keys():
+        if {"sv_hostname", "mapname", "sv_maxclients", "g_factorytitle"} <= state.connect_info.keys():
             self._show_connect_summary(server)
+
+    def _finish_seeding(self, server: ServerConfig) -> None:
+        """End the connect window: stop swallowing output, show the summary if
+        it hasn't rendered yet (e.g. the server never answered `serverinfo`)."""
+        self._state_for(server).seeding_roster = False
+        self._show_connect_summary(server)
 
     def _show_connect_summary(self, server: ServerConfig) -> None:
         state = self._state_for(server)
         if state.summary_shown or state.connection is None:
             return
         state.summary_shown = True
-        state.seeding_roster = False
         info = state.connect_info
         name = info.get("sv_hostname") or server.name
+        gametype = info.get("g_factorytitle") or "?"
         current_map = info.get("mapname") or "?"
         count = len(state.roster.list())
         maxclients = info.get("sv_maxclients")
         players = f"{count}/{maxclients}" if maxclients else str(count)
+        raw_state = info.get("g_gamestate") or ""
+        state_key = _GAMESTATE_KEYS.get(raw_state)
+        gamestate = t(state_key) if state_key else (raw_state or "?")
         self._console(
             server,
-            [(INFO_COLOR, t("log_server_summary", name=name, map=current_map, players=players))],
+            [
+                (
+                    INFO_COLOR,
+                    t(
+                        "log_server_summary",
+                        name=name,
+                        gametype=gametype,
+                        map=current_map,
+                        players=players,
+                        gamestate=gamestate,
+                    ),
+                )
+            ],
         )
 
     def _handle_stats_event(self, server: ServerConfig, event: dict) -> None:
@@ -891,8 +923,9 @@ class MainFrame(wx.Frame):
                 state.summary_shown = False
                 for cmd in _CONNECT_QUERY:
                     state.connection.send(cmd)
-                # Fallback in case some query gets no response.
-                wx.CallLater(2000, self._show_connect_summary, server)
+                # Close the connect window after the serverinfo burst settles
+                # (also the fallback if the server never answers serverinfo).
+                wx.CallLater(2000, self._finish_seeding, server)
                 # Ready for input: put the cursor in the command box.
                 if server is self._selected_server():
                     self.command_input.SetFocus()
