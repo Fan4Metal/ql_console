@@ -8,6 +8,7 @@ import wx
 import wx.adv
 
 from .. import __version__
+from ..build_info import commit_hash
 from ..i18n import t
 
 GITHUB_URL = "https://github.com/Fan4Metal/ql_console"
@@ -26,8 +27,10 @@ class AboutDialog(wx.Dialog):
         if logo is not None:
             sizer.Add(logo, 0, wx.ALIGN_CENTRE_HORIZONTAL | wx.TOP, 16)
 
+        commit = commit_hash()
+        version = f"{__version__} ({commit})" if commit else __version__
         text = wx.StaticText(
-            self, label=t("about_text", version=__version__), style=wx.ALIGN_CENTRE_HORIZONTAL
+            self, label=t("about_text", version=version), style=wx.ALIGN_CENTRE_HORIZONTAL
         )
         sizer.Add(text, 0, wx.ALIGN_CENTRE_HORIZONTAL | wx.ALL, 16)
 

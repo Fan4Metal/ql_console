@@ -1,3 +1,6 @@
+# Baked-in build metadata (regenerated per build by tools/build_exe.py)
+src/ql_console/_commit.py
+
 # Python-generated files
 __pycache__/
 *.py[oc]
