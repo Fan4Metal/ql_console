@@ -286,6 +286,7 @@ class MainFrame(wx.Frame):
         self.server_list.Bind(wx.EVT_LISTBOX, lambda _e: self._on_select_server())
         self.server_list.Bind(wx.EVT_LISTBOX_DCLICK, self._on_list_dclick)
         self.server_list.Bind(wx.EVT_CONTEXT_MENU, self._on_list_context_menu)
+        self.server_list.Bind(wx.EVT_KEY_DOWN, self._on_list_key)
         # Drag-and-drop reordering of the server list.
         self._drag_index = wx.NOT_FOUND
         self.server_list.Bind(wx.EVT_LEFT_DOWN, self._on_list_left_down)
@@ -503,6 +504,15 @@ class MainFrame(wx.Frame):
             self.server_list.SetSelection(len(self.config.servers) - 1)
             self._on_select_server()
         dialog.Destroy()
+
+    def _on_list_key(self, event: wx.KeyEvent) -> None:
+        key = event.GetKeyCode()
+        if key == wx.WXK_F2:
+            self._on_edit(event)
+        elif key == wx.WXK_DELETE:
+            self._on_remove(event)
+        else:
+            event.Skip()
 
     def _on_edit(self, _event: wx.Event) -> None:
         server = self._selected_server()
