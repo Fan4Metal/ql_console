@@ -126,6 +126,10 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
     "lbl_language": {"en": "Language:", "ru": "Язык:"},
     "lbl_hint_language": {"en": "Hint language:", "ru": "Язык подсказок:"},
     "hint_lang_same": {"en": "Same as interface", "ru": "Как в интерфейсе"},
+    "chk_hide_default_hints": {
+        "en": "Hide default values in hints",
+        "ru": "Скрывать значения по умолчанию в подсказках",
+    },
     "chk_hide_echo": {
         "en": "Hide RCON command echo",
         "ru": "Скрывать эхо RCON-команд",

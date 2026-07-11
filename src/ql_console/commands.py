@@ -27,6 +27,9 @@ Desc = str | dict[str, str]
 # ``None`` (the default) means "follow the UI language".
 _hint_language: str | None = None
 
+# When True, generated cvars hide their default-value description (e.g. ``= "40"``).
+_hide_default_values: bool = False
+
 
 def set_hint_language(lang: str | None) -> None:
     """Set the language for autocomplete hints; falsy/None = follow the UI."""
@@ -37,6 +40,12 @@ def set_hint_language(lang: str | None) -> None:
 def hint_language() -> str:
     """The active hint language (the explicit override, or the UI language)."""
     return _hint_language or current_language()
+
+
+def set_hide_default_values(hide: bool) -> None:
+    """Toggle whether generated cvars show their default value in the hint."""
+    global _hide_default_values
+    _hide_default_values = hide
 
 
 @dataclass(frozen=True)
@@ -51,6 +60,10 @@ class Entry:
         d = self.desc_raw
         if isinstance(d, dict):
             return d.get(hint_language()) or d.get("en") or self.name
+        # A plain-string desc on a cvar is a generated default value
+        # (e.g. ``= "40"``); optionally suppressed via settings.
+        if _hide_default_values and self.kind == CVAR:
+            return ""
         return d
 
 

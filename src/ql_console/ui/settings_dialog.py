@@ -64,6 +64,10 @@ class SettingsDialog(wx.Dialog):
         grid.Add(wx.StaticText(parent, label=t("lbl_hint_language")), 0, wx.ALIGN_CENTER_VERTICAL)
         grid.Add(self.hint_language, 1, wx.EXPAND)
         box.Add(grid, 0, wx.EXPAND | wx.ALL, 8)
+
+        self.hide_default_hints = wx.CheckBox(parent, label=t("chk_hide_default_hints"))
+        self.hide_default_hints.SetValue(self._settings.hide_default_hints)
+        box.Add(self.hide_default_hints, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
         return box
 
     def _build_view_section(self) -> wx.Sizer:
@@ -114,6 +118,7 @@ class SettingsDialog(wx.Dialog):
         return AppSettings(
             language=lang,
             hint_language=hint_lang,
+            hide_default_hints=self.hide_default_hints.GetValue(),
             hide_rcon_echo=self.hide_echo.GetValue(),
             clean_output=self.clean_output.GetValue(),
             console_font_face=face,

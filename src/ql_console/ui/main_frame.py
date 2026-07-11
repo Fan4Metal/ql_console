@@ -16,7 +16,7 @@ import wx
 
 from .. import __version__, colors
 from ..colors import RGB
-from ..commands import set_hint_language
+from ..commands import set_hide_default_values, set_hint_language
 from ..config import AppConfig, ServerConfig, load_config, save_config
 from ..i18n import set_language, t
 from ..connection import ServerConnection
@@ -151,6 +151,7 @@ class MainFrame(wx.Frame):
         self.config: AppConfig = load_config()
         set_language(self.config.settings.language)
         set_hint_language(self.config.settings.hint_language)
+        set_hide_default_values(self.config.settings.hide_default_hints)
         self.SetTitle(self._window_title())
         # State keyed by the id() of each ServerConfig object.
         self._state: dict[int, _ServerState] = {}
@@ -218,6 +219,7 @@ class MainFrame(wx.Frame):
             self.config.settings = new
             self._persist()
             set_hint_language(new.hint_language)
+            set_hide_default_values(new.hide_default_hints)
             self._apply_view_settings()
             if language_changed:
                 set_language(new.language)
